@@ -71,6 +71,14 @@ class Cell:
         layer: Optional[int] = None,
         datatype: Optional[int] = None,
     ) -> list[Polygon]: ...
+    def get_polygons_numpy(
+        self,
+        apply_repetitions: bool = True,
+        include_paths: bool = True,
+        depth: Optional[int] = None,
+        layer: Optional[int] = None,
+        datatype: Optional[int] = None,
+    ) -> numpy.ndarray: ...
     def get_property(self, name: str) -> Optional[list[list[str | bytes | float]]]: ...
     def remove(self, *elements: Label | Polygon | RobustPath | FlexPath | Reference) -> Self: ...
     def set_property(
@@ -473,7 +481,7 @@ class RawCell:
     size: int
     def __init__(self, name: str): ...
     def dependencies(self, recursive: bool) -> list[RawCell]: ...
-
+    def get_polygons(self, unit: float = 0, tolerance: float = 0) -> numpy.ndarray: ... 
 class Reference:
     cell: Cell
     cell_name: str

@@ -331,3 +331,33 @@ def test_get_labels(tree):
     assert len(labels) == 0
     labels = c3.get_labels(depth=2, layer=11, texttype=0)
     assert len(labels) == 6
+
+
+def test_get_polygons_numpy(tree):
+    c3, _, _ = tree
+    numpy_array = c3.get_polygons_numpy()
+
+    assert len(numpy_array) > 0
+    assert numpy_array.shape[1] == 3
+
+    assert len(numpy.unique(numpy_array[:, 2])) == len(c3.get_polygons())
+
+
+def test_get_polygons_numpy_depth(tree):
+    c3, _, _ = tree
+    depths = [0, 1, 2]
+    for depth in depths:
+        numpy_array = c3.get_polygons_numpy(depth=depth)
+        assert numpy_array.shape[0] == sum(
+            [len(poly.points) for poly in c3.get_polygons(depth=depth)]
+        )
+
+
+def test_get_polygons_numpy_filter(tree):
+    c3, _, _ = tree
+    layer = 0
+    datatype = 0
+    numpy_array = c3.get_polygons_numpy(layer=layer, datatype=datatype)
+    assert numpy_array.shape[0] == sum(
+        [len(poly.points) for poly in c3.get_polygons(layer=layer, datatype=datatype)]
+    )

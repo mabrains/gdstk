@@ -413,6 +413,41 @@ void Cell::get_polygons(bool apply_repetitions, bool include_paths, int64_t dept
     }
 }
 
+void Cell::get_polygons_numpy(bool apply_repetitions, bool include_paths, int64_t depth, bool filter,
+                              Tag tag, std::vector<std::vector<double>>& numpy_data) const {
+    Array<Polygon*> polygons = {};
+    get_polygons(apply_repetitions, include_paths, depth, filter, tag, polygons);
+    
+    // Determine the total number of points
+    uint64_t total_points = 0;
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        total_points += polygons[i]->point_array.count;
+    }
+
+    // Resize the numpy_data vector to hold points and polygon IDs
+    numpy_data.resize(total_points, std::vector<double>(3, 0.0)); // Assuming 3 is the dimensionality
+
+    // Populate the numpy_data vector
+    uint64_t point_idx = 0;
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        Polygon* poly = polygons[i];
+        for (uint64_t j = 0; j < poly->point_array.count; j++) {
+            // Store point coordinates
+            numpy_data[point_idx][0] = poly->point_array[j].x;
+            numpy_data[point_idx][1] = poly->point_array[j].y;
+            // Store polygon ID
+            numpy_data[point_idx][2] = static_cast<double>(i);  // Convert i to double for storing
+            point_idx++;
+        }
+    }
+
+    // Clean up allocated memory
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        // Assuming free_allocation is the correct function to deallocate memory
+        free_allocation(polygons[i]);
+    }
+}
+
 void Cell::get_flexpaths(bool apply_repetitions, int64_t depth, bool filter, Tag tag,
                          Array<FlexPath*>& result) const {
     uint64_t start = result.count;

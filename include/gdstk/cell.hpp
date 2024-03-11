@@ -14,6 +14,7 @@ LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+#include <vector>
 
 #include "array.hpp"
 #include "flexpath.hpp"
@@ -139,6 +140,12 @@ struct Cell {
     // is true, only polygons with the indicated tag are appended.
     void get_polygons(bool apply_repetitions, bool include_paths, int64_t depth, bool filter,
                       Tag tag, Array<Polygon*>& result) const;
+
+    // Similar to get_polygons, but outputs in different format
+    // output is numpy.ndarray[numper_of_points,3] 
+    // columns are x,y,polugon_id
+    void get_polygons_numpy(bool apply_repetitions, bool include_paths, int64_t depth, bool filter,
+                                  Tag tag, std::vector<std::vector<double>>& numpy_data) const;
 
     // Similar to get_polygons, but for paths and labels.
     void get_flexpaths(bool apply_repetitions, int64_t depth, bool filter, Tag tag,

@@ -2506,6 +2506,31 @@ Notes:
     for the filtering to be executed.  If either one is ``None`` they
     are both ignored.)!");
 
+PyDoc_STRVAR(
+    cell_object_get_polygons_numpy_doc,
+    R"!(get_polygons_numpy(apply_repetitions=True, include_paths=True, depth=None, layer=None, datatype=None) -> numpy.ndarray
+
+Return a numpy array containing all polygons points.
+
+Args:
+    apply_repetitions: Define whether repetitions should be applied in
+      the created polygons.
+    include_paths: If ``True``, polygonal representation of paths are
+      also included in the result.
+    depth: If non negative, indicates the number of reference levels
+      processed recursively.  A value of 0 will result in no references
+      being visited.  A value of ``None`` (the default) or a negative
+      integer will include all reference levels below the cell.
+    layer: If set, only polygons in the defined layer and data type are
+      returned.
+    datatype: If set, only polygons in the defined layer and data type
+      are returned.
+
+Notes:
+    Arguments ``layer`` and ``datatype`` must both be set to integers
+    for the filtering to be executed.  If either one is ``None`` they
+    are both ignored.)!");
+
 PyDoc_STRVAR(cell_object_get_paths_doc,
              R"!(get_paths(apply_repetitions=True, depth=None, layer=None, datatype=None) -> list
 
@@ -2757,6 +2782,8 @@ List of raw cells that are referenced by this raw cell.
 
 Args:
     recursive: If ``True``, includes all dependencies recursively.)!");
+
+PyDoc_STRVAR(rawcell_object_get_polygons_doc, R"!(get points of all polygons)!");
 
 PyDoc_STRVAR(rawcell_object_name_doc, R"!(Raw cell name.
 
