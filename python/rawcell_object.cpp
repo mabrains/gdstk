@@ -4,7 +4,7 @@ This file is part of gdstk, distributed under the terms of the
 Boost Software License - Version 1.0.  See the accompanying
 LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 */
-
+#include <iostream>
 static PyObject* rawcell_object_str(RawCellObject* self) {
     char buffer[GDSTK_PRINT_BUFFER_COUNT];
     snprintf(buffer, COUNT(buffer),
@@ -68,9 +68,64 @@ static PyObject* rawcell_object_dependencies(RawCellObject* self, PyObject* args
     return result;
 }
 
+static PyObject* rawcell_object_get_polygons(RawCellObject* self, PyObject* args) {
+    double unit = 0;
+    double tolerance = 0;
+    PyObject* error_code_obj = NULL;
+
+    // Parse the arguments
+    if (!PyArg_ParseTuple(args, "|ddO", &unit, &tolerance, &error_code_obj))
+        return NULL;
+
+    // Convert error_code_obj to C++ ErrorCode* if provided
+    ErrorCode* error_code = NULL;
+    if (error_code_obj != NULL) {
+        // Implementation to convert Python object to C++ ErrorCode* goes here
+    }
+
+    // Vector to store polygons
+    std::vector<std::vector<int>> polygons;
+    std::cout <<"getting polgons"<<std::endl;
+    // Call the get_polygons method
+    self->rawcell->get_polygons(unit, tolerance, error_code, polygons);
+    std::cout <<"got polgons"<<std::endl;
+    // print polygons
+    for (size_t i = 0; i < polygons.size(); i++) {
+        std::cout << "Polygon " << i << ": ";
+        for (size_t j = 0; j < polygons[i].size(); j++) {
+            std::cout << polygons[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // Create a NumPy array for storing the polygons
+    npy_intp dims[] = {static_cast<npy_intp>(polygons.size()), 3}; // 3 columns: x, y, poly_id
+    PyObject* numpy_array = PyArray_SimpleNew(2, dims, NPY_INT32);
+    if (numpy_array == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array.");
+        return NULL;
+    }
+
+    // Get a pointer to the data in the NumPy array
+    int32_t* numpy_data = reinterpret_cast<int32_t*>(PyArray_DATA(reinterpret_cast<PyArrayObject*>(numpy_array)));
+
+    // Copy the polygon data into the NumPy array
+    for (size_t i = 0; i < polygons.size(); i++) {
+        for (size_t j = 0; j < polygons[i].size(); j++) {
+            numpy_data[i * 3 + j] = polygons[i][j];
+        }
+    }
+
+    // Return the NumPy array
+    return numpy_array;
+}
+
+
 static PyMethodDef rawcell_object_methods[] = {
     {"dependencies", (PyCFunction)rawcell_object_dependencies, METH_VARARGS,
      rawcell_object_dependencies_doc},
+    {"get_polygons", (PyCFunction)rawcell_object_get_polygons, METH_VARARGS,
+     rawcell_object_get_polygons_doc},
     {NULL}};
 
 PyObject* rawcell_object_get_name(RawCellObject* self, void*) {

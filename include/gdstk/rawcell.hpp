@@ -66,6 +66,8 @@ struct RawCell {
     // includes dependencies of any dependencies recursively.
     void get_dependencies(bool recursive, Map<RawCell*>& result) const;
 
+    void get_polygons(double unit, double tolerance, ErrorCode* error_code, std::vector<std::vector<int>>& polygons);
+
     // This function outputs the rawcell in the GDSII.  It is not supposed to
     // be called by the user.
     ErrorCode to_gds(FILE* out);

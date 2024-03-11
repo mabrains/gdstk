@@ -12,6 +12,7 @@ LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <vector>
 
 #include <gdstk/allocator.hpp>
 #include <gdstk/gdsii.hpp>
@@ -68,6 +69,112 @@ void RawCell::get_dependencies(bool recursive, Map<RawCell*>& result) const {
         result.set(rawcell->name, rawcell);
     }
 }
+
+void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code, std::vector<std::vector<int>>& polygons) {
+    const char* gdsii_record_names[] = {
+        "HEADER",    "BGNLIB",   "LIBNAME",   "UNITS",      "ENDLIB",      "BGNSTR",
+        "STRNAME",   "ENDSTR",   "BOUNDARY",  "PATH",       "SREF",        "AREF",
+        "TEXT",      "LAYER",    "DATATYPE",  "WIDTH",      "XY",          "ENDEL",
+        "SNAME",     "COLROW",   "TEXTNODE",  "NODE",       "TEXTTYPE",    "PRESENTATION",
+        "SPACING",   "STRING",   "STRANS",    "MAG",        "ANGLE",       "UINTEGER",
+        "USTRING",   "REFLIBS",  "FONTS",     "PATHTYPE",   "GENERATIONS", "ATTRTABLE",
+        "STYPTABLE", "STRTYPE",  "ELFLAGS",   "ELKEY",      "LINKTYPE",    "LINKKEYS",
+        "NODETYPE",  "PROPATTR", "PROPVALUE", "BOX",        "BOXTYPE",     "PLEX",
+        "BGNEXTN",   "ENDEXTN",  "TAPENUM",   "TAPECODE",   "STRCLASS",    "RESERVED",
+        "FORMAT",    "MASK",     "ENDMASKS",  "LIBDIRSIZE", "SRFNAME",     "LIBSECUR"};
+
+    // One extra char in case we need a 0-terminated string with max count (should never happen, but
+    // it doesn't hurt to be prepared).
+    uint8_t buffer[65537];
+    int16_t* data16 = (int16_t*)(buffer + 4);
+    int32_t* data32 = (int32_t*)(buffer + 4);
+    uint64_t* data64 = (uint64_t*)(buffer + 4);
+    char* str = (char*)(buffer + 4);
+
+    double factor = 1;
+    double width = 0;
+    int16_t key = 0;
+
+    bool target_cell_found = false;
+    int polygon_id = 0;
+
+    while (true) {
+        uint64_t record_length = COUNT(buffer);
+        ErrorCode err = gdsii_read_record(source->file, buffer, record_length);
+        if (err != ErrorCode::NoError) {
+            if (error_code) *error_code = err;
+            break;
+        }
+
+        uint64_t data_length;
+        switch ((GdsiiDataType)buffer[3]) {
+            case GdsiiDataType::BitArray:
+            case GdsiiDataType::TwoByteSignedInteger:
+                data_length = (record_length - 4) / 2;
+                big_endian_swap16((uint16_t*)data16, data_length);
+                break;
+            case GdsiiDataType::FourByteSignedInteger:
+            case GdsiiDataType::FourByteReal:
+                data_length = (record_length - 4) / 4;
+                big_endian_swap32((uint32_t*)data32, data_length);
+                break;
+            case GdsiiDataType::EightByteReal:
+                data_length = (record_length - 4) / 8;
+                big_endian_swap64(data64, data_length);
+                break;
+            default:
+                data_length = record_length - 4;
+        }
+
+        switch ((GdsiiRecord)(buffer[2])) {
+            case GdsiiRecord::LIBNAME:
+                if (str[data_length - 1] == 0) data_length--;
+                break;
+            case GdsiiRecord::UNITS: {
+                const double db_in_user = gdsii_real_to_double(data64[0]);
+                const double db_in_meters = gdsii_real_to_double(data64[1]);
+                if (unit > 0) {
+                    factor = db_in_meters / unit;
+                } else {
+                    factor = db_in_user;
+                }
+                if (tolerance <= 0) {
+                    tolerance = db_in_meters / factor;
+                }
+            } break;
+            case GdsiiRecord::ENDLIB:
+                return;
+            case GdsiiRecord::BGNSTR:
+                break;
+            case GdsiiRecord::STRNAME:
+                if (strncmp(str, name, data_length) == 0) {
+                    target_cell_found = true;
+                }
+                break;
+            case GdsiiRecord::BOUNDARY:
+            case GdsiiRecord::BOX:
+                if (target_cell_found) {
+                    for (uint64_t i = 0; i < data_length; i += 4) {
+                        int32_t x = factor * data32[i];
+                        int32_t y = factor * data32[i + 1];
+                        polygons.push_back(std::vector<int>{x,y,polygon_id});
+                    }
+                    polygon_id++;  // Increment the polygon_id for the next polygon
+                }
+                break;
+            case GdsiiRecord::ENDEL:
+                if (target_cell_found) {
+                    target_cell_found = false;
+                }
+                break;
+            default:
+                // Ignoring other records
+                break;
+        }
+    }
+}
+
+
 
 ErrorCode RawCell::to_gds(FILE* out) {
     ErrorCode error_code = ErrorCode::NoError;

@@ -532,3 +532,12 @@ def test_roundtrip_path_ends(tmpdir: pathlib.Path):
         assert (
             path.ends == gds_path.ends and path.ends == oas_path.ends
         ), f"expected: {path.ends}, gds: {gds_path.ends}, oas: {oas_path.ends}"
+
+def test_get_polygons_raw_cells():
+    rc = gdstk.read_rawcells("lidar_no_rad.gds")
+    for cell_name, raw_cell in rc.items():
+        print(cell_name)
+        print(raw_cell)
+        print(raw_cell.get_polygons())
+
+        assert False
