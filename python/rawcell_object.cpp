@@ -85,18 +85,8 @@ static PyObject* rawcell_object_get_polygons(RawCellObject* self, PyObject* args
 
     // Vector to store polygons
     std::vector<std::vector<int>> polygons;
-    std::cout <<"getting polgons"<<std::endl;
     // Call the get_polygons method
     self->rawcell->get_polygons(unit, tolerance, error_code, polygons);
-    std::cout <<"got polgons"<<std::endl;
-    // print polygons
-    for (size_t i = 0; i < polygons.size(); i++) {
-        std::cout << "Polygon " << i << ": ";
-        for (size_t j = 0; j < polygons[i].size(); j++) {
-            std::cout << polygons[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
 
     // Create a NumPy array for storing the polygons
     npy_intp dims[] = {static_cast<npy_intp>(polygons.size()), 3}; // 3 columns: x, y, poly_id
@@ -146,7 +136,19 @@ PyObject* rawcell_object_get_size(RawCellObject* self, void*) {
     return result;
 }
 
+PyObject* rawcell_object_get_filename(RawCellObject* self, void*) {
+    const char * c = self->rawcell->filename.c_str();
+
+    PyObject* result = PyUnicode_FromString(c);
+    if (!result) {
+        PyErr_SetString(PyExc_TypeError, "Unable to convert value to string.");
+        return NULL;
+    }
+    return result;
+}
+
 static PyGetSetDef rawcell_object_getset[] = {
+    {"filename", (getter)rawcell_object_get_filename, NULL, rawcell_object_filename_doc, NULL},
     {"name", (getter)rawcell_object_get_name, NULL, rawcell_object_name_doc, NULL},
     {"size", (getter)rawcell_object_get_size, NULL, rawcell_object_size_doc, NULL},
     {NULL}};

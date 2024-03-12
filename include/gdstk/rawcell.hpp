@@ -13,6 +13,7 @@ LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -46,6 +47,7 @@ struct RawSource {
 // loaded from, remains open until it is no longer needed.  That is done by
 // reference counting.
 struct RawCell {
+    std::string filename; // Store the filename
     char* name;
     RawSource* source;
     union {

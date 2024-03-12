@@ -154,9 +154,7 @@ def test_rw_gds(tmpdir, sample_library):
 
     c = cells["gl_rw_gds_2"]
     assert len(c.polygons) == 2
-    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(
-        c.polygons[1], gdstk.Polygon
-    )
+    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(c.polygons[1], gdstk.Polygon)
 
     c = cells["gl_rw_gds_3"]
     assert len(c.references) == 1
@@ -209,9 +207,7 @@ def test_rw_gds_filter(tmpdir, sample_library):
 
     c = cells["gl_rw_gds_2"]
     assert len(c.polygons) == 2
-    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(
-        c.polygons[1], gdstk.Polygon
-    )
+    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(c.polygons[1], gdstk.Polygon)
 
     c = cells["gl_rw_gds_3"]
     assert len(c.references) == 1
@@ -441,9 +437,7 @@ def test_frozen_gds_with_cell_array_has_constant_hash(tmpdir):
     cell.add(gdstk.rectangle((0, 0), (100, 1000)))
     cell2 = gdstk.Cell(name="Olaf")
     cell2.add(gdstk.rectangle((0, 0), (50, 100)))
-    cell_array = gdstk.Reference(
-        cell2, columns=5, rows=2, spacing=(60, 120), origin=(1000, 0)
-    )
+    cell_array = gdstk.Reference(cell2, columns=5, rows=2, spacing=(60, 120), origin=(1000, 0))
     cell.add(cell_array)
     lib.add(cell)
     lib.write_gds(fn1, timestamp=frozen_date)
@@ -533,11 +527,13 @@ def test_roundtrip_path_ends(tmpdir: pathlib.Path):
             path.ends == gds_path.ends and path.ends == oas_path.ends
         ), f"expected: {path.ends}, gds: {gds_path.ends}, oas: {oas_path.ends}"
 
-def test_get_polygons_raw_cells():
-    rc = gdstk.read_rawcells("lidar_no_rad.gds")
-    for cell_name, raw_cell in rc.items():
-        print(cell_name)
-        print(raw_cell)
-        print(raw_cell.get_polygons())
 
-        assert False
+def test_get_polygons_raw_cells():
+    fname = "lidar_no_rad.gds"
+    rc = gdstk.read_rawcells(fname)
+    lib = gdstk.read_gds(fname)
+    cells = lib.cells
+    for cell in cells:
+        assert len(cell.get_polygons(depth=0)) == len(
+            numpy.unique(rc[cell.name].get_polygons()[:, 2])
+        )

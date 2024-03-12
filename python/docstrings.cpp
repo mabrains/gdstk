@@ -2790,6 +2790,11 @@ PyDoc_STRVAR(rawcell_object_name_doc, R"!(Raw cell name.
 Notes:
     This attribute is read-only.)!");
 
+PyDoc_STRVAR(rawcell_object_filename_doc, R"!(Raw cell filename.
+
+Notes:
+    This attribute is read-only.)!");
+
 PyDoc_STRVAR(rawcell_object_size_doc, R"!(Raw cell size (in bytes).
 
 Notes:

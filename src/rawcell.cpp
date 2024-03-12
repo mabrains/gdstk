@@ -13,6 +13,7 @@ LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 #include <stdint.h>
 #include <stdio.h>
 #include <vector>
+#include <iostream>
 
 #include <gdstk/allocator.hpp>
 #include <gdstk/gdsii.hpp>
@@ -96,7 +97,17 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
     int16_t key = 0;
 
     bool target_cell_found = false;
+    bool found_polygon = false;
     int polygon_id = 0;
+    RawSource* source = (RawSource*)allocate(sizeof(RawSource));
+    source->uses = 0;
+    const char * c = filename.c_str();
+    source->file = fopen(c, "rb");
+    if (source->file == NULL) {
+        if (error_logger) fputs("[GDSTK] Unable to open input GDSII file.\n", error_logger);
+        if (error_code) *error_code = ErrorCode::InputFileOpenError;
+        return;
+    }
 
     while (true) {
         uint64_t record_length = COUNT(buffer);
@@ -144,8 +155,6 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
             } break;
             case GdsiiRecord::ENDLIB:
                 return;
-            case GdsiiRecord::BGNSTR:
-                break;
             case GdsiiRecord::STRNAME:
                 if (strncmp(str, name, data_length) == 0) {
                     target_cell_found = true;
@@ -154,7 +163,12 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
             case GdsiiRecord::BOUNDARY:
             case GdsiiRecord::BOX:
                 if (target_cell_found) {
-                    for (uint64_t i = 0; i < data_length; i += 4) {
+                    found_polygon = true;
+                }
+                break;
+            case GdsiiRecord::XY:
+                if(found_polygon){
+                  for (uint64_t i = 0; i < data_length; i += 4) {
                         int32_t x = factor * data32[i];
                         int32_t y = factor * data32[i + 1];
                         polygons.push_back(std::vector<int>{x,y,polygon_id});
@@ -164,7 +178,12 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
                 break;
             case GdsiiRecord::ENDEL:
                 if (target_cell_found) {
-                    target_cell_found = false;
+                    found_polygon = false;
+                }
+                break;
+            case GdsiiRecord::ENDSTR:
+                if (target_cell_found) {
+                    return;
                 }
                 break;
             default:
@@ -172,7 +191,7 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
                 break;
         }
     }
-}
+}  
 
 
 
@@ -199,7 +218,7 @@ ErrorCode RawCell::to_gds(FILE* out) {
     return error_code;
 }
 
-Map<RawCell*> read_rawcells(const char* filename, ErrorCode* error_code) {
+Map<RawCell*>  read_rawcells(const char* filename, ErrorCode* error_code) {
     Map<RawCell*> result = {};
     uint8_t buffer[65537];
     char* str = (char*)(buffer + 4);
@@ -259,6 +278,7 @@ Map<RawCell*> read_rawcells(const char* filename, ErrorCode* error_code) {
                 source->uses++;
                 rawcell->offset = ftell(source->file) - record_length;
                 rawcell->size = record_length;
+                rawcell->filename = std::string(filename);
                 break;
             case 0x06:  // STRNAME
                 if (rawcell) {

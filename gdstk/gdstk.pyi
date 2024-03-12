@@ -477,6 +477,7 @@ class Polygon:
     ) -> Self: ...
 
 class RawCell:
+    filename: str
     name: str
     size: int
     def __init__(self, name: str): ...
