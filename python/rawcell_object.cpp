@@ -71,10 +71,12 @@ static PyObject* rawcell_object_dependencies(RawCellObject* self, PyObject* args
 static PyObject* rawcell_object_get_polygons(RawCellObject* self, PyObject* args) {
     double unit = 0;
     double tolerance = 0;
+    int64_t depth = 0;
+    int start_id = 0;
     PyObject* error_code_obj = NULL;
 
     // Parse the arguments
-    if (!PyArg_ParseTuple(args, "|ddO", &unit, &tolerance, &error_code_obj))
+    if (!PyArg_ParseTuple(args, "|dddO", &depth, &unit, &tolerance, &error_code_obj))
         return NULL;
 
     // Convert error_code_obj to C++ ErrorCode* if provided
@@ -86,7 +88,7 @@ static PyObject* rawcell_object_get_polygons(RawCellObject* self, PyObject* args
     // Vector to store polygons
     std::vector<std::vector<int>> polygons;
     // Call the get_polygons method
-    self->rawcell->get_polygons(unit, tolerance, error_code, polygons);
+    self->rawcell->get_polygons(start_id, depth, unit, tolerance, error_code, polygons);
 
     // Create a NumPy array for storing the polygons
     npy_intp dims[] = {static_cast<npy_intp>(polygons.size()), 3}; // 3 columns: x, y, poly_id

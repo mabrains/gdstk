@@ -533,7 +533,15 @@ def test_get_polygons_raw_cells():
     rc = gdstk.read_rawcells(fname)
     lib = gdstk.read_gds(fname)
     cells = lib.cells
+    x = 0
     for cell in cells:
-        assert len(cell.get_polygons(depth=0)) == len(
-            numpy.unique(rc[cell.name].get_polygons()[:, 2])
-        )
+        x+=len( numpy.unique(rc[cell.name].get_polygons(-1)[:, 2]))
+        print(len( numpy.unique(rc[cell.name].get_polygons(-1)[:, 2])))
+        print(len(cell.get_polygons(depth=-1,apply_repetitions=False)))
+        assert False
+        # assert len(cell.get_polygons(depth=-1)) == len(
+        #     numpy.unique(rc[cell.name].get_polygons(1)[:, 2])
+        # )
+        # assert False
+    print(x)
+    assert False

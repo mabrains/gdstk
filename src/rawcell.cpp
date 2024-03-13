@@ -71,7 +71,7 @@ void RawCell::get_dependencies(bool recursive, Map<RawCell*>& result) const {
     }
 }
 
-void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code, std::vector<std::vector<int>>& polygons) {
+void RawCell::get_polygons(int& start_id, int64_t depth, double unit, double tolerance, ErrorCode* error_code, std::vector<std::vector<int>>& polygons) {
     const char* gdsii_record_names[] = {
         "HEADER",    "BGNLIB",   "LIBNAME",   "UNITS",      "ENDLIB",      "BGNSTR",
         "STRNAME",   "ENDSTR",   "BOUNDARY",  "PATH",       "SREF",        "AREF",
@@ -98,7 +98,6 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
 
     bool target_cell_found = false;
     bool found_polygon = false;
-    int polygon_id = 0;
     RawSource* source = (RawSource*)allocate(sizeof(RawSource));
     source->uses = 0;
     const char * c = filename.c_str();
@@ -158,12 +157,33 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
             case GdsiiRecord::STRNAME:
                 if (strncmp(str, name, data_length) == 0) {
                     target_cell_found = true;
+                    std::cout<<"target_cell_found: "<<name<<std::endl;
                 }
                 break;
+            case GdsiiRecord::SREF:
+            case GdsiiRecord::AREF:
+                if (target_cell_found) {
+                    // First, get the dependencies recursively
+                    if(depth != 0){                    
+                        Map<RawCell*> dependency_map = {};
+                        get_dependencies(true, dependency_map);
+                        // Iterate over the dependency map and call get_polygons on each element
+                        if (dependency_map.has_key(str))
+                        {
+                            RawCell* ref = dependency_map.get_slot(str)->value;
+
+                            std::cout<<"dependency name: "<<ref->name<<"\nstart_id: "<<start_id<<std::endl;
+                            ref->get_polygons(start_id, -1, unit, tolerance, error_code, polygons);
+                        }
+                    }
+                }
+                break;
+            
             case GdsiiRecord::BOUNDARY:
             case GdsiiRecord::BOX:
                 if (target_cell_found) {
                     found_polygon = true;
+                    std::cout<<"found_polygon: "<< " id:" <<start_id<<std::endl;
                 }
                 break;
             case GdsiiRecord::XY:
@@ -171,9 +191,9 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
                   for (uint64_t i = 0; i < data_length; i += 4) {
                         int32_t x = factor * data32[i];
                         int32_t y = factor * data32[i + 1];
-                        polygons.push_back(std::vector<int>{x,y,polygon_id});
+                        polygons.push_back(std::vector<int>{x,y,start_id});
                     }
-                    polygon_id++;  // Increment the polygon_id for the next polygon
+                    start_id++;  // Increment the polygon_id for the next polygon
                 }
                 break;
             case GdsiiRecord::ENDEL:
@@ -182,9 +202,22 @@ void RawCell::get_polygons(double unit, double tolerance, ErrorCode* error_code,
                 }
                 break;
             case GdsiiRecord::ENDSTR:
-                if (target_cell_found) {
-                    return;
-                }
+                // if (target_cell_found) {
+                //     // First, get the dependencies recursively
+                //     if(depth != 0){                    
+                //         Map<RawCell*> dependency_map = {};
+                //         get_dependencies(true, dependency_map);
+                //         // Iterate over the dependency map and call get_polygons on each element
+                //         MapItem<RawCell*>* item = dependency_map.next(NULL);
+                //         while (item) {
+                //             RawCell* rawcell = item->value;
+                //             std::cout<<"dependency name: "<<rawcell->name<<"\nstart_id: "<<start_id<<std::endl;
+                //             rawcell->get_polygons(start_id, -1, unit, tolerance, error_code, polygons);
+                //             item = dependency_map.next(item);
+                //         }
+                //     }
+                //     return;
+                // }
                 break;
             default:
                 // Ignoring other records
