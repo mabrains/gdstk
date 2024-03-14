@@ -480,6 +480,87 @@ static PyObject* library_object_delete_property(LibraryObject* self, PyObject* a
     return (PyObject*)self;
 }
 
+
+static PyObject* library_object_get_cell_polygons_numpy(LibraryObject* self, PyObject* args, PyObject* kwds) {
+    const char* cell_name;
+    int apply_repetitions = 1;
+    int include_paths = 1;
+    PyObject* py_depth = Py_None;
+    PyObject* py_layer = Py_None;
+    PyObject* py_datatype = Py_None;
+    const char* keywords[] = {
+        "cell_name", "apply_repetitions", "include_paths", "depth", "layer", "datatype", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ppOOO:get_polygons", (char**)keywords,
+                                     &cell_name, &apply_repetitions, &include_paths, &py_depth, &py_layer,
+                                     &py_datatype))
+        return NULL;
+
+    int64_t depth = -1;
+    if (py_depth != Py_None) {
+        depth = PyLong_AsLongLong(py_depth);
+        if (PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "Unable to convert depth to integer.");
+            return NULL;
+        }
+    }
+
+    if ((py_layer == Py_None) != (py_datatype == Py_None)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "Filtering is only enabled if both layer and datatype are set.");
+        return NULL;
+    }
+
+    uint32_t layer = 0;
+    uint32_t datatype = 0;
+    bool filter = (py_layer != Py_None) && (py_datatype != Py_None);
+    if (filter) {
+        layer = PyLong_AsUnsignedLong(py_layer);
+        if (PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "Unable to convert layer to unsigned integer.");
+            return NULL;
+        }
+        datatype = PyLong_AsUnsignedLong(py_datatype);
+        if (PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "Unable to convert datatype to unsigned integer.");
+            return NULL;
+        }
+    }
+
+    // Call the C++ function to get the numpy data
+    std::vector<std::vector<int64_t>> numpy_data;
+    self->library->get_cell_polygons_numpy(cell_name, apply_repetitions > 0, include_paths > 0, depth, filter, make_tag(layer, datatype), numpy_data);
+
+    // Check if numpy_data is empty
+    if (numpy_data.empty()) {
+        // Create an empty NumPy array
+        npy_intp dims[2] = {0, 3}; // Empty array with 0 rows and 3 columns (x, y, polygon ID)
+        PyObject* numpy_array = PyArray_SimpleNew(2, dims, NPY_INT64);
+        if (!numpy_array) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array.");
+            return NULL;
+        }
+        return numpy_array;
+    }
+
+    // Create a NumPy array
+    npy_intp dims[2] = {static_cast<npy_intp>(numpy_data.size()), 3}; // Number of points x Number of columns (x, y, polygon Id)
+    PyObject* numpy_array = PyArray_SimpleNew(2, dims, NPY_INT64);
+    if (!numpy_array) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array.");
+        return NULL;
+    }
+    int64_t* data = reinterpret_cast<int64_t*>(PyArray_DATA(reinterpret_cast<PyArrayObject*>(numpy_array)));
+
+    // Populate the NumPy array with data from numpy_data
+    for (size_t i = 0; i < numpy_data.size(); ++i) {
+        for (size_t j = 0; j < 3; ++j) {
+            data[i * 3 + j] = numpy_data[i][j];
+        }
+    }
+
+    return numpy_array;
+}
+
 static PyMethodDef library_object_methods[] = {
     {"add", (PyCFunction)library_object_add, METH_VARARGS, library_object_add_doc},
     {"remove", (PyCFunction)library_object_remove, METH_VARARGS, library_object_remove_doc},
@@ -504,6 +585,8 @@ static PyMethodDef library_object_methods[] = {
      object_get_property_doc},
     {"delete_property", (PyCFunction)library_object_delete_property, METH_VARARGS,
      object_delete_property_doc},
+    {"get_cell_polygons_numpy", (PyCFunction)library_object_get_cell_polygons_numpy, METH_VARARGS | METH_KEYWORDS,
+     library_object_get_cell_polygons_numpy_doc},
     {NULL}};
 
 PyObject* library_object_get_name(LibraryObject* self, void*) {

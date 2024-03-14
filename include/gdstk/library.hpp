@@ -13,6 +13,7 @@ LICENSE file or <http://www.boost.org/LICENSE_1_0.txt>
 
 #include <stdio.h>
 #include <time.h>
+#include <vector>
 
 #include "array.hpp"
 #include "cell.hpp"
@@ -103,6 +104,15 @@ struct Library {
     void replace_cell(RawCell* old_cell, Cell* new_cell);
     void replace_cell(Cell* old_cell, RawCell* new_cell);
     void replace_cell(RawCell* old_cell, RawCell* new_cell);
+
+    // Get cell polygons in numpy array.
+    // dtype int64
+    // shape (num_polygons, 3) 
+    // columns  --> (X,Y,polygon_id)
+    void get_cell_polygons_numpy(const char* cell_name, bool apply_repetitions, bool include_paths, int64_t depth, bool filter,
+                                  Tag tag, std::vector<std::vector<int64_t>>& numpy_data) const;
+
+
 
     // Change the tags of all elements in this library.  Map keys are the
     // current element tags and map values are the desired new tags.

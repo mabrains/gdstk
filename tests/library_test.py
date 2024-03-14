@@ -154,9 +154,7 @@ def test_rw_gds(tmpdir, sample_library):
 
     c = cells["gl_rw_gds_2"]
     assert len(c.polygons) == 2
-    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(
-        c.polygons[1], gdstk.Polygon
-    )
+    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(c.polygons[1], gdstk.Polygon)
 
     c = cells["gl_rw_gds_3"]
     assert len(c.references) == 1
@@ -209,9 +207,7 @@ def test_rw_gds_filter(tmpdir, sample_library):
 
     c = cells["gl_rw_gds_2"]
     assert len(c.polygons) == 2
-    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(
-        c.polygons[1], gdstk.Polygon
-    )
+    assert isinstance(c.polygons[0], gdstk.Polygon) and isinstance(c.polygons[1], gdstk.Polygon)
 
     c = cells["gl_rw_gds_3"]
     assert len(c.references) == 1
@@ -441,9 +437,7 @@ def test_frozen_gds_with_cell_array_has_constant_hash(tmpdir):
     cell.add(gdstk.rectangle((0, 0), (100, 1000)))
     cell2 = gdstk.Cell(name="Olaf")
     cell2.add(gdstk.rectangle((0, 0), (50, 100)))
-    cell_array = gdstk.Reference(
-        cell2, columns=5, rows=2, spacing=(60, 120), origin=(1000, 0)
-    )
+    cell_array = gdstk.Reference(cell2, columns=5, rows=2, spacing=(60, 120), origin=(1000, 0))
     cell.add(cell_array)
     lib.add(cell)
     lib.write_gds(fn1, timestamp=frozen_date)
@@ -532,3 +526,14 @@ def test_roundtrip_path_ends(tmpdir: pathlib.Path):
         assert (
             path.ends == gds_path.ends and path.ends == oas_path.ends
         ), f"expected: {path.ends}, gds: {gds_path.ends}, oas: {oas_path.ends}"
+
+
+def test_get_cell_polygons_numpy():
+    lib = gdstk.read_gds("tests/proof_lib.gds")
+    for cell in lib.cells:
+        polygons = lib.get_cell_polygons_numpy(cell_name=cell.name)
+        assert len(numpy.unique(polygons[:, 2])) == len(cell.get_polygons())
+        assert len(polygons) == len(
+            [point for poly in cell.get_polygons() for point in poly.points]
+        )
+        assert polygons.dtype == numpy.int64

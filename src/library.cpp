@@ -318,6 +318,44 @@ void Library::replace_cell(RawCell* old_cell, RawCell* new_cell) {
     }
 }
 
+void Library::get_cell_polygons_numpy(const char* cell_name, bool apply_repetitions, bool include_paths, int64_t depth, bool filter,
+                              Tag tag, std::vector<std::vector<int64_t>>& numpy_data) const {
+    Array<Polygon*> polygons = {};
+    Cell* cell = get_cell(cell_name);
+    cell->get_polygons(apply_repetitions, include_paths, depth, filter, tag, polygons);
+    
+    // Determine the total number of points
+    uint64_t total_points = 0;
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        total_points += polygons[i]->point_array.count;
+    }
+
+    // Resize the numpy_data vector to hold points and polygon IDs
+    numpy_data.resize(total_points, std::vector<int64_t>(3, 0.0)); // Assuming 3 is the dimensionality
+    // Scalling
+    double scaling = unit / precision;
+    // Populate the numpy_data vector
+    uint64_t point_idx = 0;
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        Polygon* poly = polygons[i];
+        for (uint64_t j = 0; j < poly->point_array.count; j++) {
+            // Store point coordinates
+            numpy_data[point_idx][0] = (int64_t)lround((poly->point_array[j].x) * scaling);
+            numpy_data[point_idx][1] = (int64_t)lround((poly->point_array[j].y) * scaling);
+
+            // Store polygon ID
+            numpy_data[point_idx][2] = static_cast<int64_t>(i);  // Convert i to double for storing
+            point_idx++;
+        }
+    }
+
+    // Clean up allocated memory
+    for (uint64_t i = 0; i < polygons.count; i++) {
+        // Assuming free_allocation is the correct function to deallocate memory
+        free_allocation(polygons[i]);
+    }
+}
+
 ErrorCode Library::write_gds(const char* filename, uint64_t max_points, tm* timestamp) const {
     ErrorCode error_code = ErrorCode::NoError;
     FILE* out = fopen(filename, "wb");
